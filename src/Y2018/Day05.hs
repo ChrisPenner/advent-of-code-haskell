@@ -26,4 +26,7 @@ reduce :: String -> String
 reduce = foldr' go ""
  where
   go c []       = [c]
-  go c (x : xs) = if c /= x && toLower c == toLower x then xs else c : x : xs
+  go c (x : xs) = if sameLetter && differentChar then xs else c : x : xs
+   where
+    sameLetter    = toLower x == toLower c
+    differentChar = x /= c
