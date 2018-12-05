@@ -14,7 +14,7 @@ part1 = do
 part2 :: IO ()
 part2 = do
   polymer <- T.strip <$> TIO.readFile "./input/2018-05.txt"
-  print . minimum . minusChars $ T.unpack polymer
+  print . minimum . minusChars . reduce $ T.unpack polymer
 
 minusChars :: String -> [Int]
 minusChars polymer = fmap without ['a' .. 'z']
