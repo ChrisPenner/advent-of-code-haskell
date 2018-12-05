@@ -24,6 +24,9 @@ dependencies:
 - mtl
 - containers
 - text
+- megaparsec
+- time
+- lens
 
 library:
   source-dirs: src
