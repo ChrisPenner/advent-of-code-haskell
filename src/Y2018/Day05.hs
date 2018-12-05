@@ -5,16 +5,18 @@ import Data.Foldable
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
+loadPolymer :: IO String
+loadPolymer = T.unpack . T.strip <$> TIO.readFile "./input/2018-05.txt"
 
 part1 :: IO ()
 part1 = do
-  polymer <- T.strip <$> TIO.readFile "./input/2018-05.txt"
-  print . length . reduce . T.unpack $ polymer
+  polymer <- loadPolymer
+  print . length . reduce $ polymer
 
 part2 :: IO ()
 part2 = do
-  polymer <- T.strip <$> TIO.readFile "./input/2018-05.txt"
-  print . minimum . minusChars . reduce $ T.unpack polymer
+  polymer <- loadPolymer
+  print . minimum . minusChars . reduce $ polymer
 
 minusChars :: String -> [Int]
 minusChars polymer = fmap without ['a' .. 'z']
