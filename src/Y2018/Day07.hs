@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 module Y2018.Day07 where
 
@@ -6,10 +7,6 @@ import Data.List
 import Data.Foldable
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Data.Function
-import Control.Applicative
-import Data.Monoid
-import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Map as M
 import Control.Arrow ((&&&))
@@ -18,6 +15,16 @@ import Control.Lens
 import Control.Monad.Except
 import Data.Graph.Inductive
 
+
+type Time = Int
+
+data S =
+  S { _graph :: Gr Char ()
+    , _jobs :: M.Map Node Time
+    , _timer :: Int
+    }
+
+makeLenses ''S
 
 loadInput :: IO [String]
 loadInput = lines . T.unpack . T.strip <$> TIO.readFile "./input/2018-07.txt"
@@ -30,7 +37,7 @@ part1 = do
 part2 :: IO ()
 part2 = do
   gr <- parseGraph <$> loadInput
-  timedTraverseGraph gr >>= print
+  print $ timedTraverseGraph gr
 
 parseGraph :: [String] -> Gr Char ()
 parseGraph instructions = mkGraph nodes' edges'
@@ -64,27 +71,16 @@ traverseGraph' = do
   _1 %= delNode currentNode
   traverseGraph'
 
-timedTraverseGraph :: Gr Char () -> IO Int
+timedTraverseGraph :: Gr Char () -> Int
 timedTraverseGraph gr =
-  let ioList =
-        flip evalStateT (gr, mempty, mempty, 0)
-          . runExceptT
-          $ timedTraverseGraph'
-  in  either id id <$> ioList
+  either id id
+    . flip evalState (S gr mempty 0)
+    . runExceptT
+    $ timedTraverseGraph'
 
-type Time = Int
-timedTraverseGraph'
-  :: ExceptT Int (StateT (Gr Char (), M.Map Node Time, [Node], Int) IO) a
+timedTraverseGraph' :: ExceptT Int (State S) a
 timedTraverseGraph' = do
-  get
-    >>= liftIO
-    .   print
-    .   (\(_, b, c, _) -> (M.mapKeys fromNode b, fmap fromNode c))
-  tickTime
-  finishJobs
-  (gr, inProgress, result, timer) <- get
-  when (isEmpty gr && null inProgress) (throwError timer)
-  _4 += 1
+  S gr inProgress time <- get
   let availableNodes =
         filter (`M.notMember` inProgress)
           . nodes
@@ -92,12 +88,14 @@ timedTraverseGraph' = do
           $ gr
   let freeWorkers = 5 - length inProgress
   let newJobs     = take freeWorkers (sort availableNodes)
-  _2 <>= (M.fromList . fmap (id &&& id) $ newJobs)
+  jobs <>= (M.fromList . fmap (id &&& id) $ newJobs)
+  timer += 1
+  jobs . traversed -= 1
+  finishJobs
+  when (isEmpty gr && null inProgress) (throwError time)
   timedTraverseGraph'
  where
-  tickTime   = _2 . traversed -= 1
   finishJobs = do
-    (finishedJobs, unfinishedJobs) <- uses _2 (M.partition (<= 0))
-    _1 %= delNodes (M.keys finishedJobs)
-    _3 <>= (sort $ M.keys finishedJobs)
-    _2 .= unfinishedJobs
+    (finishedJobs, unfinishedJobs) <- uses jobs (M.partition (<= 0))
+    graph %= delNodes (M.keys finishedJobs)
+    jobs .= unfinishedJobs
