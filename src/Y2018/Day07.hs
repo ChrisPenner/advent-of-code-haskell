@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
 module Y2018.Day07 where
 
 import Data.Char
@@ -10,21 +8,9 @@ import qualified Data.Text.IO as TIO
 import qualified Data.Set as S
 import qualified Data.Map as M
 import Control.Arrow ((&&&))
-import Control.Monad.State
-import Control.Lens
-import Control.Monad.Except
 import Data.Graph.Inductive
 
-
 type Time = Int
-
-data S =
-  S { _graph :: Gr Char ()
-    , _jobs :: M.Map Node Time
-    , _timer :: Int
-    }
-
-makeLenses ''S
 
 loadInput :: IO [String]
 loadInput = lines . T.unpack . T.strip <$> TIO.readFile "./input/2018-07.txt"
@@ -32,12 +18,12 @@ loadInput = lines . T.unpack . T.strip <$> TIO.readFile "./input/2018-07.txt"
 part1 :: IO ()
 part1 = do
   gr <- parseGraph <$> loadInput
-  print $ traverseGraph gr
+  print . fmap fromNode $ unfoldGraph gr
 
 part2 :: IO ()
 part2 = do
   gr <- parseGraph <$> loadInput
-  print $ timedTraverseGraph gr
+  print $ timeGraph (gr, mempty)
 
 parseGraph :: [String] -> Gr Char ()
 parseGraph instructions = mkGraph nodes' edges'
@@ -48,54 +34,35 @@ parseGraph instructions = mkGraph nodes' edges'
   edgeLabels       = parseInstruction <$> instructions
   parseInstruction = (head . (!! 1) &&& head . (!! 7)) . words
 
+-- We use the time of each node as its ID
 toNode :: Char -> Node
 toNode = subtract 4 . ord
 fromNode :: Node -> Char
 fromNode = chr . (+ 4)
 
-traverseGraph :: Gr Char () -> [Char]
-traverseGraph gr =
-  fmap fromNode
-    . either id        id
-    . flip   evalState (gr, mempty)
-    . runExceptT
-    $ traverseGraph'
-
-traverseGraph' :: ExceptT [Node] (State (Gr Char (), [Node])) a
-traverseGraph' = do
-  gr <- use _1
-  let availableNodes = nodes . nfilter ((== 0) . indeg gr) $ gr
-  when (null availableNodes) (use _2 >>= throwError)
-  let currentNode = minimum availableNodes
-  _2 <>= [currentNode]
-  _1 %= delNode currentNode
-  traverseGraph'
-
-timedTraverseGraph :: Gr Char () -> Int
-timedTraverseGraph gr =
-  either id id
-    . flip evalState (S gr mempty 0)
-    . runExceptT
-    $ timedTraverseGraph'
-
-timedTraverseGraph' :: ExceptT Int (State S) a
-timedTraverseGraph' = do
-  S gr inProgress time <- get
-  let availableNodes =
-        filter (`M.notMember` inProgress)
-          . nodes
-          . nfilter ((== 0) . indeg gr)
-          $ gr
-  let freeWorkers = 5 - length inProgress
-  let newJobs     = take freeWorkers (sort availableNodes)
-  jobs <>= (M.fromList . fmap (id &&& id) $ newJobs)
-  timer += 1
-  jobs . traversed -= 1
-  finishJobs
-  when (isEmpty gr && null inProgress) (throwError time)
-  timedTraverseGraph'
+unfoldGraph :: Gr Char () -> [Node]
+unfoldGraph = unfoldr coalg
  where
-  finishJobs = do
-    (finishedJobs, unfinishedJobs) <- uses jobs (M.partition (<= 0))
-    graph %= delNodes (M.keys finishedJobs)
-    jobs .= unfinishedJobs
+  coalg gr | isEmpty gr = Nothing
+  coalg gr =
+    let availableNodes = nodes . nfilter ((== 0) . indeg gr) $ gr
+        currentNode    = minimum availableNodes
+    in  Just (currentNode, delNode currentNode gr)
+
+timeGraph :: (Gr Char (), M.Map Node Time) -> Int
+timeGraph = length . unfoldr coalg
+ where
+  coalg (gr, _) | isEmpty gr = Nothing
+  coalg (gr, inProgress) =
+    let availableNodes =
+          filter (`M.notMember` inProgress)
+            . nodes
+            . nfilter ((== 0) . indeg gr)
+            $ gr
+        freeWorkers = 5 - length inProgress
+        newJobs     = take freeWorkers (sort availableNodes)
+        inProgressWithNewJobs =
+          inProgress `mappend` (M.fromList . fmap (id &&& id) $ newJobs)
+        jobsReducedTime                = subtract 1 <$> inProgressWithNewJobs
+        (finishedJobs, unfinishedJobs) = M.partition (<= 0) jobsReducedTime
+    in  Just ((), (delNodes (M.keys finishedJobs) gr, unfinishedJobs))

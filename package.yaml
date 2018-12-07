@@ -29,6 +29,7 @@ dependencies:
 - lens
 - array
 - fgl
+- recursion-schemes
 
 library:
   source-dirs: src
