@@ -17,6 +17,9 @@ import Control.Arrow ((&&&))
 import Data.Array as A
 import Control.Monad.State
 import Control.Lens
+import Control.Monad.Except
+import Data.Graph.Inductive
+import Data.Maybe
 
 
 loadInput :: IO [String]
@@ -24,50 +27,37 @@ loadInput = lines . T.unpack . T.strip <$> TIO.readFile "./input/2018-07.txt"
 
 part1 :: IO ()
 part1 = do
-  (depGraph, vertToNode, charToVert) <- parseGraph <$> loadInput
-  let startingPoints = getStartingPoints (indegree depGraph)
-  let vertToChar     = (\(a, _, _) -> a) . vertToNode
-  -- putStrLn . vertToChar $ traverseGraph depGraph startingPoints
-  let (_, path') =
-        flip execState (S.fromList startingPoints, [])
-          $ traverseGraph' vertToNode charToVert
-  print . fmap vertToChar $ path'
-  -- print . fmap vertToChar $ topSort depGraph
+  gr <- parseGraph <$> loadInput
+  print $ traverseGraph gr
 
-traverseGraph'
-  :: (Vertex -> (Char, Char, [Char]))
-  -> (Char -> Maybe Vertex)
-  -> State (S.Set Vertex, [Vertex]) ()
-traverseGraph' lookupNode lookupVertex = do
-  s <- use _1
-  let mLinkedVerts = do
-        (next, s') <- S.minView s
-        let (_, _, linked) = lookupNode next
-        linkedVerts <- traverse lookupVertex linked
-        return (S.fromList linkedVerts <> s', next)
-  case mLinkedVerts of
-    Nothing              -> return ()
-    Just (nextSet, used) -> do
-      _1 .= nextSet
-      _2 <>= [used]
-      traverseGraph' lookupNode lookupVertex
-
-
-getStartingPoints :: Array Vertex Int -> [Vertex]
-getStartingPoints = fmap fst . filter ((== 0) . snd) . A.assocs
-
-parseGraph
-  :: [String] -> (Graph, Vertex -> (Char, Char, [Char]), Char -> Maybe Vertex)
-parseGraph instructions = graphFromEdges edges'
+parseGraph :: [String] -> Gr Char ()
+parseGraph instructions = mkGraph nodes' edges'
  where
-  edgeLabels  = sort (parseInstruction <$> instructions)
-  startingMap = M.fromList ((, []) . snd <$> edgeLabels)
-  dependencyMap :: M.Map Char [Char]
-  dependencyMap =
-    M.unionWith mappend startingMap
-      $ M.fromListWith mappend
-      . fmap (fmap pure)
-      $ edgeLabels
-  edges' = M.foldMapWithKey mkEdge dependencyMap
-  mkEdge from tos = [(from, from, tos)]
+  allLabels        = S.fromList $ foldMap (\(a, b) -> [a, b]) edgeLabels
+  nodes'           = (toNode &&& id) <$> (toList allLabels)
+  edges' = (\(src, dest) -> (toNode src, toNode dest, ())) <$> edgeLabels
+  edgeLabels       = parseInstruction <$> instructions
   parseInstruction = (head . (!! 1) &&& head . (!! 7)) . words
+
+toNode :: Char -> Node
+toNode = subtract 65 . ord
+fromNode :: Node -> Char
+fromNode = chr . (+ 65)
+
+traverseGraph :: Gr Char () -> [Char]
+traverseGraph gr =
+  fmap fromNode
+    . either id        id
+    . flip   evalState (gr, mempty)
+    . runExceptT
+    $ traverseGraph'
+
+traverseGraph' :: ExceptT [Node] (State (Gr Char (), [Node])) a
+traverseGraph' = do
+  gr <- use _1
+  let availableNodes = nodes . nfilter ((== 0) . indeg gr) $ gr
+  when (null availableNodes) (use _2 >>= throwError)
+  let currentNode = minimum availableNodes
+  _2 <>= [currentNode]
+  _1 %= delNode currentNode
+  traverseGraph'

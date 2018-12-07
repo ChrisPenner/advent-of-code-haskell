@@ -27,6 +27,8 @@ dependencies:
 - megaparsec
 - time
 - lens
+- array
+- fgl
 
 library:
   source-dirs: src
