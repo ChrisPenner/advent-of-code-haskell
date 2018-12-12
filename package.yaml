@@ -32,6 +32,8 @@ dependencies:
 - recursion-schemes
 - representable-grid
 - comonad
+- pointedlist
+- adjunctions
 
 library:
   source-dirs: src
