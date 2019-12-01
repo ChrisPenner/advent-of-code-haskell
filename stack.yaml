@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-12.14
+resolver: lts-14.1
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -34,11 +34,11 @@ resolver: lts-12.14
 #  - wai
 packages:
 - .
-- ../representable-grid
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
-# extra-deps: []
+extra-deps:
+- grids-0.5.0.1@sha256:1230e0e2249ce74ad092329410b1a87c5bcbeb88aa148f0131bdc43385ba3362,3081
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

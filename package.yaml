@@ -30,10 +30,12 @@ dependencies:
 - array
 - fgl
 - recursion-schemes
-- representable-grid
+- grids
 - comonad
 - pointedlist
 - adjunctions
+- lens-action
+- lens-regex-pcre
 
 library:
   source-dirs: src

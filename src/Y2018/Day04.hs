@@ -77,7 +77,7 @@ buildTimeMap :: IO TimeMap
 buildTimeMap = do
   input <- readFile "./input/2018-04.txt"
   let parsedLines =
-        traverse (parseMaybe (parseLine <* many anyChar)) $ lines input
+        traverse (parseMaybe (parseLine <* many anySingle)) $ lines input
   logs <- maybe (fail "failed to parse") pure parsedLines
   let sortedLogs = sortOn time logs
   let timeMap'   = collectLogs sortedLogs
