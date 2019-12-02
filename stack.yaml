@@ -39,6 +39,8 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - grids-0.5.0.1@sha256:1230e0e2249ce74ad092329410b1a87c5bcbeb88aa148f0131bdc43385ba3362,3081
+- lens-regex-pcre-1.1.0.0
+- pcre-light-0.4.1.0@sha256:4902ef06b037fd79448c7a63a65c1a4a1bf0bbc15ea7e67e71d52ec995e18460,1868
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

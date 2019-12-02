@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeApplications #-}
-module Day01 where
+module Y2019.Day01 where
 
 import Control.Lens
 import Control.Lens.Action

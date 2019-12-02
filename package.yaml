@@ -35,7 +35,8 @@ dependencies:
 - pointedlist
 - adjunctions
 - lens-action
-- lens-regex-pcre
+- lens-regex-pcre >= 1.1.0.0
+- bytestring
 
 library:
   source-dirs: src
