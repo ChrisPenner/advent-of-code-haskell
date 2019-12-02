@@ -227,8 +227,137 @@ solve1 = do
 
 Honestly, aside from the intentional obfuscation it turned out okay!
 
+## Part 2
 
+Just in case you haven't solved the first part on your own, the second part says we now need to find a specific **memory initialization** which **results** in a specific answer after running the computer. We need to find the exact values to put into slots 1 and 2 which result in this number, in my case: `19690720`.
 
+Let's see what we can do! First I'll refactor the code from step 1 so it accepts some parameters
 
+```haskell
+solveSingle :: M.Map Int Int -> Int -> Int -> Int
+solveSingle registers noun verb =
+    registers
+    & ix 1 .~ noun
+    & ix 2 .~ verb
+    & (,) 0
+    &~ fix (\continue -> do
+        let loadRegister r = use (_2 . singular (ix r))
+        let loadNext = _1 <<+= 1 >>= loadRegister
+        let getArg = loadNext >>= loadRegister
+        out <- getOp <$> loadNext <*> getArg <*> getArg
+        outputReg <- loadNext
+        _2 . ix outputReg .= out
+        use _1 >>= loadRegister >>= \case
+          99 -> return ()
+          _ -> continue
+        )
+    & view (_2 . singular (ix 0))
+```
 
+That was pretty painless. Now we need to construct some thingamabob which runs this with different 'noun' and 'verb' numbers (that's what the puzzle calls them) until it gets the answer we need. Unless we want to do some sort of crazy analysis of how this computer works at a theoretical level, we'll have to just brute force it. There're only 10,000 combinations, so it should be fine. We can collect all possibilities using a simple list comprehension:
 
+```haskell
+[(noun, verb) | noun <- [0..99], verb <- [0..99]]
+```
+
+We need to run the computer on each possible set of inputs, which amounts to simply calling `solveSingle` on them:
+
+```haskell
+solve2 :: IO ()
+solve2 = do
+    registers <- TIO.readFile "./src/Y2019/day02.txt"
+               <&> toMapOf (indexing ([regex|\d+|] . match . unpacked . _Show @Int))
+    print $ [(noun, verb) | noun <- [0..99], verb <- [0..99]]
+              ^.. traversed . to (uncurry (solveSingle registers))
+
+>>> solve2
+[29891,29892,29893,29894,29895,29896,29897,29898,29899,29900...]
+```
+
+This prints out the answers to every possible combination, but we need to **find** a **specific** combination! We can easily **find** the answer by using `filtered`, or `only` or even `findOf`, these are all valid:
+
+```haskell
+>>> [(noun, verb) | noun <- [0..99], verb <- [0..99]] 
+      ^? traversed . to (uncurry (solveSingle registers)) . filtered (== 19690720)
+Just 19690720
+
+-- `only` is like `filtered` but searches for a specific value
+>>> [(noun, verb) | noun <- [0..99], verb <- [0..99]] 
+      ^? traversed . to (uncurry (solveSingle registers)) . only 19690720
+Just 19690720
+
+>>> findOf 
+      (traversed . to (uncurry (solveSingle registers)) . only 19690720)
+      [(noun, verb) | noun <- [0..99], verb <- [0..99]]
+Just 19690720
+```
+
+These all work, but the tricky part is that we don't actually care about the answer, we already know that! What we need is the arguments we passed in to **get** that answer. There are many ways to do this, but my first thought is to just **stash** the arguments away where we can get them later. Indexes are great for this sort of thing (I cover tricks using indexed optics [in my book](https://leanpub.com/optics-by-example)). We can *stash* a value into the index using `selfIndex`, and it'll be carried alongside the rest of your computation for you! There's the handy `findIndexOf` combinator which will find the index of the first value which matches your predicate (in this case, the answer is equal to our required output).
+
+Here's the magic incantation:
+
+```haskell
+findIndexOf (traversed . selfIndex . to (uncurry (solveSingle registers)))
+            (== 19690720)
+            [(noun, verb) | noun <- [0..99], verb <- [0..99]]
+```
+
+This gets us super-duper close, but the problem says we actually need to run the following transformation over our arguments to get the real answer: `(100 * noun) + verb`. We could easily do it *after* running `findIndexOf`, but just to be ridiculous, we'll do it inline! We're stashing our "answer" in the index, so that's where we need to run the transformation. We can use `reindexed` to run a transformation over the index of an optic, so if we alter `selfIndex` (which stashes the value into the index) then we can map the index through the transformation:
+
+```haskell
+reindexed (\(noun, verb) -> (100 * noun) + verb) selfIndex
+```
+
+That does it!
+
+Altogether now, here's the entire solution for the second part:
+
+```haskell
+getOp :: Int -> (Int -> Int -> Int)
+getOp 1 = (+)
+getOp 2 = (*)
+getOp n = error $ "unknown op-code: " <> show n
+
+solveSingle :: M.Map Int Int -> Int -> Int -> Int
+solveSingle registers noun verb =
+    registers
+    & ix 1 .~ noun
+    & ix 2 .~ verb
+    & (,) 0
+    &~ fix (\continue -> do
+        let loadRegister r = use (_2 . singular (ix r))
+        let loadNext = _1 <<+= 1 >>= loadRegister
+        let getArg = loadNext >>= loadRegister
+        out <- getOp <$> loadNext <*> getArg <*> getArg
+        outputReg <- loadNext
+        _2 . ix outputReg .= out
+        use _1 >>= loadRegister >>= \case
+          99 -> return ()
+          _ -> continue
+        )
+    & view (_2 . singular (ix 0))
+
+solvePart2 :: IO ()
+solvePart2 = do
+    registers <- TIO.readFile "./src/Y2019/day02.txt"
+               <&> toMapOf (indexing ([regex|\d+|] . match . unpacked . _Show @Int))
+    print $ findIndexOf  ( traversed
+                         . reindexed (\(noun, verb) -> (100 * noun) + verb) selfIndex
+                         . to (uncurry (solveSingle registers)))
+            (== 19690720)
+            [(noun, verb) | noun <- [0..99], verb <- [0..99]]
+```
+
+This was a surprisingly tricky problem for only day 2, but we've gotten through it okay! Today we learned about:
+
+* `regex`: for precisely extracting text
+* `toMapOf`: for building maps from an indexed fold
+* `&~`: for running state monads as part of a pipeline
+* `<&>`: for pipelining data within a context, 
+* `<<+=`: for simultaneous modification AND access using lenses in MonadState
+* `fix`: using fix for anonymous recursion (just for fun)
+* `selfIndex`: for stashing values till later
+* `reindexed`: for editing indices
+* `findIndexOf`: for getting the index of a value matching a predicate
+
+Hopefully at least one of those was new for you! Maybe tomorrows will be easier :)
