@@ -29,16 +29,15 @@ parseInput x = error $ "bad parseInput" <> show x
 
 main :: IO ()
 main = do
-    input <- TIO.readFile "./src/Y2019/day03.txt"
-    print $ input
-          & T.lines
-          & each %~ ( toListOf ([regex|(\w)(\d+)|] . groups . mapping unpacked . to parseInput)
-                      >>> toListOf (traversed . folding flatten)
+    TIO.readFile "./src/Y2019/day03.txt"
+               <&> T.lines
+               <&> each %~ ( toListOf ([regex|(\w)(\d+)|] . groups . mapping unpacked . to parseInput . folding flatten)
                       >>> scanl1 (\(a, b) (c, d) -> (a + c, b + d))
                       >>> S.fromList
                     )
-          & foldl1 S.intersection
-          & minimumOf (folded . to (sumOf (both . to abs)))
+               <&> foldl1 S.intersection
+               <&> minimumOf (folded . to (sumOf (both . to abs)))
+               >>= print
   where
     flatten :: (Dir, Int) -> [(Int, Int)]
     flatten (d, n) = replicate n (toCoord d)
@@ -47,13 +46,6 @@ main = do
     toCoord D = (0, 1)
     toCoord L = (-1, 0)
     toCoord R = (1, 0)
-
-    -- let [wireOne, wireTwo] = T.lines input &
-    -- let (pathOne, pathTwo) = (wireOne, wireTwo) & both %~ (toListOf ([regex|(\w)(\d+)|] . groups . mapping unpacked . to parseInput))
-    -- let (_, posOne) = getPositions pathOne
-    -- let (_, posTwo) = getPositions pathTwo
-    -- print $ minimumOf (folded . to (\(x, y) -> abs x + abs y)) (S.intersection posOne posTwo)
-    -- print input
 
 -- getPositions :: [(Dir, Int)] -> ((Int, Int), S.Set (Int, Int))
 -- getPositions = foldl' go ((0, 0), mempty)
