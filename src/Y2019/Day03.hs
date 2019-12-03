@@ -11,12 +11,10 @@ import Control.Lens
 import Control.Lens.Regex.Text
 import Data.Text.Lens
 import Data.Text.IO as TIO
-import Data.Map.Lens
 import qualified Data.Map as M
 import qualified Data.Text as T
-import Control.Monad.State
 import qualified Data.Set as S
-import Data.List
+import Control.Category ((>>>))
 
 
 testWires :: T.Text
@@ -29,15 +27,50 @@ parseInput :: [String] -> (Dir, Int)
 parseInput [d, n] = (read d, read n)
 parseInput x = error $ "bad parseInput" <> show x
 
--- main :: IO ()
--- main = do
---     input <- TIO.readFile "./src/Y2019/day03.txt"
---     let [wireOne, wireTwo] = T.lines input
---     let (pathOne, pathTwo) = (wireOne, wireTwo) & both %~ (toListOf ([regex|(\w)(\d+)|] . groups . mapping unpacked . to parseInput))
---     let (_, posOne) = getPositions pathOne
---     let (_, posTwo) = getPositions pathTwo
---     print $ minimumOf (folded . to (\(x, y) -> abs x + abs y)) (S.intersection posOne posTwo)
---     -- print input
+main :: IO ()
+main = do
+    input <- TIO.readFile "./src/Y2019/day03.txt"
+    print $ input
+          & T.lines
+          & each %~ ( toListOf ([regex|(\w)(\d+)|] . groups . mapping unpacked . to parseInput)
+                      >>> toListOf (traversed . folding flatten)
+                      >>> scanl1 (\(a, b) (c, d) -> (a + c, b + d))
+                      >>> S.fromList
+                    )
+          & foldl1 S.intersection
+          & minimumOf (folded . to (sumOf (both . to abs)))
+  where
+    flatten :: (Dir, Int) -> [(Int, Int)]
+    flatten (d, n) = replicate n (toCoord d)
+    toCoord :: Dir -> (Int, Int)
+    toCoord U = (0, -1)
+    toCoord D = (0, 1)
+    toCoord L = (-1, 0)
+    toCoord R = (1, 0)
+
+    -- let [wireOne, wireTwo] = T.lines input &
+    -- let (pathOne, pathTwo) = (wireOne, wireTwo) & both %~ (toListOf ([regex|(\w)(\d+)|] . groups . mapping unpacked . to parseInput))
+    -- let (_, posOne) = getPositions pathOne
+    -- let (_, posTwo) = getPositions pathTwo
+    -- print $ minimumOf (folded . to (\(x, y) -> abs x + abs y)) (S.intersection posOne posTwo)
+    -- print input
+
+-- getPositions :: [(Dir, Int)] -> ((Int, Int), S.Set (Int, Int))
+-- getPositions = foldl' go ((0, 0), mempty)
+--   where
+--     go :: ((Int, Int), S.Set (Int, Int)) -> (Dir, Int) -> ((Int, Int), S.Set (Int, Int))
+--     go ((x, y), locs) (U, n) =
+--         let newLocs = S.fromList $ do offset <- [1..n]; return (x, y - offset)
+--             in ((x,y - n), locs <> newLocs)
+--     go ((x, y), locs) (D, n) =
+--         let newLocs = S.fromList $ do offset <- [1..n]; return (x, y + offset)
+--             in ((x,y + n), locs <> newLocs)
+--     go ((x, y), locs) (L, n) =
+--         let newLocs = S.fromList $ do offset <- [1..n]; return (x - offset, y)
+--             in ((x - n, y), locs <> newLocs)
+--     go ((x, y), locs) (R, n) =
+--         let newLocs = S.fromList $ do offset <- [1..n]; return (x + offset, y)
+--             in ((x + n, y), locs <> newLocs)
 
 -- getPositions :: [(Dir, Int)] -> ((Int, Int), S.Set (Int, Int))
 -- getPositions = foldl' go ((0, 0), mempty)
