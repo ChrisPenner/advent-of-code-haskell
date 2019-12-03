@@ -4,6 +4,7 @@ author: "Chris Penner"
 date: "Dec 1, 2019"
 tags: [haskell]
 description: "Day one of Advent of Code solved with optics"
+image: "pinecones.jpg"
 ---
 
 Since I'm releasing [a book on practical lenses and optics](https://leanpub.com/optics-by-example) later this month I thought it would be fun to do a few of this year's Advent of Code puzzles using optics as much as possible!
