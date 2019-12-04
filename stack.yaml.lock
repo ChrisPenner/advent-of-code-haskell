@@ -25,6 +25,20 @@ packages:
       sha256: 5e5f8d948ba577d4d838895ccb3533c6ef9876ef60884dae8342a77934cc2ec2
   original:
     hackage: pcre-light-0.4.1.0@sha256:4902ef06b037fd79448c7a63a65c1a4a1bf0bbc15ea7e67e71d52ec995e18460,1868
+- completed:
+    hackage: lens-4.18@sha256:58c9736c65ab75aa1833098b0cac72d483aee9d953d2a83061ac8e0b555d0f96,15446
+    pantry-tree:
+      size: 8253
+      sha256: 4873d933bf39b75191f8b0b61cf76c27e12742499314d56cc38a7051718bed21
+  original:
+    hackage: lens-4.18
+- completed:
+    hackage: type-equality-1@sha256:aeb9c44abf5d2edf52caff114a7da565d8328fa84bbe194828e4355ea85bf5b3,1457
+    pantry-tree:
+      size: 313
+      sha256: 00d4fb756b387d6d7663ccdaae7b61234d4c9c6c5792427133f7686461fb844d
+  original:
+    hackage: type-equality-1@sha256:aeb9c44abf5d2edf52caff114a7da565d8328fa84bbe194828e4355ea85bf5b3,1457
 snapshots:
 - completed:
     size: 523448
