@@ -19,8 +19,16 @@ numbers = [307237..769058]
 
 main :: IO ()
 main = ([307237..769058] :: [Int])
-        & lengthOf (traversed . re _Show . filteredBy (packed . [regex|(\d)\1|] . match) . filtered (\s -> s == sort s))
+        & lengthOf (traversed . re _Show
+                   . filtered (\s -> s == sort s)
+                   . filteredBy (packed . [regex|(\d)\1+|] . match . to T.length . only 2)
+                   )
         & print
+
+-- main :: IO ()
+-- main = ([307237..769058] :: [Int])
+--         & lengthOf (traversed . re _Show . filteredBy (packed . [regex|(\d)\1|] . match) . filtered (\s -> s == sort s))
+--         & print
 
 main2 :: IO ()
 main2 = (307237 :: Int)

@@ -24,49 +24,15 @@ import Control.Monad
 testWires :: T.Text
 testWires = "R75,D30,R83,U83,L12,D49,R71,U7,L72\nU62,R66,U55,R34,D71,R55,D58,R83"
 
-data Dir = R | D | L | U
-  deriving (Eq, Ord, Show, Read)
+-- data Dir = R | D | L | U
+--   deriving (Eq, Ord, Show, Read)
 
-parseInput :: [String] -> (Int, V2 Int)
-parseInput [d, n] = (,) (read n) $ case d of
-    "U" -> V2 0 (-1)
-    "D" -> V2 0 1
-    "L" -> V2 (-1) 0
-    "R" -> V2 1 0
-
-
-case_ :: Prism s t a b -> (a -> c) -> (t -> c) -> s -> c
-case_ p f g = either g f . matching p
-
-case__ :: Prism s t a b -> c -> (t -> c) -> s -> c
-case__ p a = case_ p (const a)
-
-
-otherwise_ :: a -> a
-otherwise_ = id
-
-otherwise__ :: a -> b -> a
-otherwise__ = const
-
-
-parseInput' :: (Char, String) -> (Int, V2 Int)
-parseInput' (d, n) = (,) (read n) $ d &
-    ( case__ (only 'U') (V2 0 (-1))
-    $ case__ (only 'U') (V2 0 (-1))
-    $ otherwise__ (V2 0 0))
-
-    -- case_ (_DividedBy 3 . _DividedBy 5) (const " FizzBuzz")
-  -- $ case_ (_DividedBy 3) (const "Fizz")
-  -- $ case_ (_DividedBy 5) (const "Buzz")
-  -- $ otherwise_ show
-
-    -- (d & filtered (== 'U') .~ V2 0 (-1)
-        -- )
-    -- 'U' -> V2 0 (-1)
-    -- 'D' -> V2 0 1
-    -- 'L' -> V2 (-1) 0
-    -- 'R' -> V2 1 0
-
+parseInput :: (Char, String) -> (Int, V2 Int)
+parseInput (d, n) = (,) (read n) $ case d of
+    'U' -> V2 0 (-1)
+    'D' -> V2 0 1
+    'L' -> V2 (-1) 0
+    'R' -> V2 1 0
 
 main :: IO ()
 main = do
@@ -74,14 +40,13 @@ main = do
                <&> T.lines
                <&> traverseOf both view (ix 0, ix 1)
                <&> both %~
-                     (   toListOf ([regex|(\w)(\d+)|] . groups . mapping unpacked . to parseInput . folding (uncurry replicate))
+                     (   toListOf ([regex|\w\d+|] . match . unpacked . _Cons . to parseInput . folding (uncurry replicate))
                      >>> scanl1 (+)
                      >>> S.fromList
                      )
                <&> foldl1Of each S.intersection
                <&> minimumOf (folded . to (sum . abs))
-               <&> print
-               & join
+                     >>= print
 
 main2 :: IO ()
 main2 = do
@@ -89,7 +54,7 @@ main2 = do
                <&> T.lines
                <&> traverseOf both view (ix 0, ix 1)
                <&> each %~
-                     (   toListOf ([regex|(\w)(\d+)|] . groups . mapping unpacked . to parseInput . folding (uncurry replicate))
+                     (   toListOf ([regex|\w\d+|] . match . unpacked . _Cons . to parseInput . folding (uncurry replicate))
                      >>> scanl1 (+)
                      >>> toMapOf (reindexed (+1) traversed . withIndex . swapped . ito id)
                      )
