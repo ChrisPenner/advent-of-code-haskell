@@ -20,6 +20,7 @@ import Control.Monad.State
 import Control.Applicative
 import Debug.Trace
 import Control.Monad.Writer
+import Control.Monad.Reader
 
 -- solve1 :: IO ()
 -- solve1 = do
@@ -67,7 +68,7 @@ splitOp (show -> i) = (map (read . pure) $ take 3 padded, read . reverse . take 
   where
     padded = reverse . getZipList $ ZipList (reverse i) <|> ZipList ['0','0','0','0','0']
 
-type Computer a = WriterT [Int] (StateT (Int, M.Map Int Int) IO) a
+type Computer a = ReaderT Int (WriterT [Int] (StateT (Int, M.Map Int Int) IO)) a
 
 loadWithMode :: Int -> Computer Int
 loadWithMode 0 = do
@@ -100,38 +101,63 @@ runOp = do
     liftIO $ print (o, splitOp opCode)
     case splitOp opCode of
         ([_, b, a], 1) -> do
-            -- traceShowM ("Code: 1\n" :: String)
             result <- liftA2 (+) (loadWithMode a) (loadWithMode b)
             outAddress <- loadWithMode 1
             store outAddress result
             runOp
         ([_, b, a], 2) -> do
-            -- traceShowM ("Code: 2\n" :: String)
             result <- liftA2 (*) (loadWithMode a) (loadWithMode b)
             outAddress <- loadWithMode 1
             store outAddress result
             runOp
         ([_, _, _], 3) -> do
-            -- traceShowM ("Code: 3\n" :: String)
             outAddress <- loadWithMode 1
-            store outAddress 1
+            ask >>= store outAddress
             runOp
         ([_, _, a], 4) -> do
-            -- traceShowM ("Code: 4\n" :: String)
             result <- loadWithMode a
             tell [result]
             liftIO . putStrLn $ "OUTPUT: " <> show result
-            -- get >>= liftIO . print
+            runOp
+        ([_, b, a], 5) -> do
+            cond <- loadWithMode a
+            pos <- loadWithMode b
+            case cond of
+                0 -> return ()
+                _ -> _1 .= pos
+            runOp
+        ([_, b, a], 6) -> do
+            cond <- loadWithMode a
+            pos <- loadWithMode b
+            case cond of
+                0 -> _1 .= pos
+                _ -> return ()
+            runOp
+        ([_, b, a], 7) -> do
+            first <- loadWithMode a
+            second <- loadWithMode b
+            pos <- loadWithMode 1
+            if first < second
+               then store pos 1
+               else store pos 0
+            runOp
+        ([_, b, a], 8) -> do
+            first <- loadWithMode a
+            second <- loadWithMode b
+            pos <- loadWithMode 1
+            if first == second
+               then store pos 1
+               else store pos 0
             runOp
         (_, 99) -> do
             -- traceShowM ("Code: 99\n" :: String)
             return ()
 
-solve :: IO ()
-solve = do
+solve :: Int -> IO ()
+solve inp = do
     -- registers <- return "3,0,4,0,99"
     -- registers <- return "1101,100,-1,4,0"
     registers <- TIO.readFile "./src/Y2019/day05.txt"
                <&> toMapOf (indexing ([regex|-?\d+|] . match . unpacked . _Show @Int))
-    w <- flip evalStateT (0, registers) . execWriterT $ runOp
+    w <- flip evalStateT (0, registers) . execWriterT . flip runReaderT inp $ runOp
     print w
