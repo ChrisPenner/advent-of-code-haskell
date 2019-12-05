@@ -38,6 +38,7 @@ dependencies:
 - lens-regex-pcre >= 1.1.0.0
 - bytestring
 - linear
+- deepseq
 
 library:
   source-dirs: src
