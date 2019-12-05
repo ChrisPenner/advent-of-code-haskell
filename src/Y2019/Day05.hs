@@ -18,50 +18,8 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Control.Monad.State
 import Control.Applicative
-import Debug.Trace
 import Control.Monad.Writer
 import Control.Monad.Reader
-
--- solve1 :: IO ()
--- solve1 = do
---     input <- TIO.readFile "./src/Y2019/day02.txt"
---     print $ input
---             & toMapOf (indexing ([regex|\d+|] . match . unpacked . _Show @Int))
---             & ix 1 .~ 12
---             & ix 2 .~ 2
---             & (,) 0
---             &~ fix (\continue -> do
---                 let loadRegister r = use (_2 . singular (ix r))
---                 let loadNext = _1 <<+= 1 >>= loadRegister
---                 let getArg = loadNext >>= loadRegister
---                 out <- getOp <$> loadNext <*> getArg <*> getArg
---                 outputReg <- loadNext
---                 _2 . ix outputReg .= out
---                 use _1 >>= loadRegister >>= \case
---                   99 -> return ()
---                   _ -> continue
---                 )
---             & view (_2 . singular (ix 0))
-
--- solveSingle :: M.Map Int Int -> Int -> Int -> Int
--- solveSingle registers noun verb =
---     registers
---     & ix 1 .~ noun
---     & ix 2 .~ verb
---     & (,) 0
---     &~ fix (\continue -> do
---         let loadRegister r = use (_2 . singular (ix r))
---         let loadNext = _1 <<+= 1 >>= loadRegister
---         let getArg = loadNext >>= loadRegister
---         out <- getOp <$> loadNext <*> getArg <*> getArg
---         outputReg <- loadNext
---         _2 . ix outputReg .= out
---         use _1 >>= loadRegister >>= \case
---           99 -> return ()
---           _ -> continue
---         )
---     & view (_2 . singular (ix 0))
-
 
 splitOp :: Int -> ([Int], Int)
 splitOp (show -> i) = (map (read . pure) $ take 3 padded, read . reverse . take 2 . reverse $ padded)
@@ -93,67 +51,58 @@ store address val = do
     liftIO . putStrLn $ "stored value " <> show val <> " at address " <> show address
     _2 . at address ?= val
 
-runOp :: Computer ()
-runOp = do
+loop :: Computer ()
+loop = do
+    step >>= \case
+      Halt -> return ()
+      Continue -> loop
+
+data Status = Halt | Continue
+
+step :: Computer Status
+step = do
     opCode <- loadNext
-    -- o <- use _1
-    -- liftIO $ print (o, splitOp opCode)
     case splitOp opCode of
-        ([_, b, a], 1) -> do
-            result <- liftA2 (+) (loadWithMode a) (loadWithMode b)
-            outAddress <- loadWithMode 1
-            store outAddress result
-            runOp
-        ([_, b, a], 2) -> do
-            result <- liftA2 (*) (loadWithMode a) (loadWithMode b)
-            outAddress <- loadWithMode 1
-            store outAddress result
-            runOp
+        (modes, 1) -> binOp (+) modes
+        (modes, 2) -> binOp (*) modes
         ([_, _, _], 3) -> do
             outAddress <- loadWithMode 1
             ask >>= store outAddress
-            runOp
+            return Continue
         ([_, _, a], 4) -> do
             result <- loadWithMode a
             tell [result]
-            liftIO . putStrLn $ "OUTPUT: " <> show result
-            runOp
+            return Continue
         ([_, b, a], 5) -> do
             cond <- loadWithMode a
             pos <- loadWithMode b
             case cond of
                 0 -> return ()
                 _ -> _1 .= pos
-            runOp
+            return Continue
         ([_, b, a], 6) -> do
             cond <- loadWithMode a
             pos <- loadWithMode b
             case cond of
                 0 -> _1 .= pos
                 _ -> return ()
-            runOp
-        ([_, b, a], 7) -> do
-            first <- loadWithMode a
-            second <- loadWithMode b
-            pos <- loadWithMode 1
-            if first < second
-               then store pos 1
-               else store pos 0
-            runOp
-        ([_, b, a], 8) -> do
-            first <- loadWithMode a
-            second <- loadWithMode b
-            pos <- loadWithMode 1
-            if first == second
-               then store pos 1
-               else store pos 0
-            runOp
+            return Continue
+        (modes, 7) -> binOp (\a b -> view (from enum) (a < b)) modes
+        (modes, 8) -> binOp (\a b -> view (from enum) (a < b)) modes
         (_, 99) -> do
-            return ()
+            return Halt
+
+binOp :: (Int -> Int -> Int) -> [Int] -> Computer Status
+binOp f [_, b, a] = do
+    first <- loadWithMode a
+    second <- loadWithMode b
+    pos <- loadWithMode 1
+    store pos (f first second)
+    return Continue
 
 solve :: Int -> IO ()
 solve inp = do
     registers <- TIO.readFile "./src/Y2019/day05.txt"
                <&> toMapOf (indexing ([regex|-?\d+|] . match . unpacked . _Show @Int))
-    w <- flip evalStateT (0, registers) . execWriterT . flip runReaderT inp $ runOp
+    w <- flip evalStateT (0, registers) . execWriterT . flip runReaderT inp $ loop
     print w
