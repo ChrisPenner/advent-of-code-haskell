@@ -95,10 +95,9 @@ store address val = do
 
 runOp :: Computer ()
 runOp = do
-    -- get >>= traceShowM
-    o <- use _1
     opCode <- loadNext
-    liftIO $ print (o, splitOp opCode)
+    -- o <- use _1
+    -- liftIO $ print (o, splitOp opCode)
     case splitOp opCode of
         ([_, b, a], 1) -> do
             result <- liftA2 (+) (loadWithMode a) (loadWithMode b)
@@ -150,13 +149,10 @@ runOp = do
                else store pos 0
             runOp
         (_, 99) -> do
-            -- traceShowM ("Code: 99\n" :: String)
             return ()
 
 solve :: Int -> IO ()
 solve inp = do
-    -- registers <- return "3,0,4,0,99"
-    -- registers <- return "1101,100,-1,4,0"
     registers <- TIO.readFile "./src/Y2019/day05.txt"
                <&> toMapOf (indexing ([regex|-?\d+|] . match . unpacked . _Show @Int))
     w <- flip evalStateT (0, registers) . execWriterT . flip runReaderT inp $ runOp
