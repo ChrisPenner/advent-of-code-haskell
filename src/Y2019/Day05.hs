@@ -18,6 +18,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Control.Monad.State
 import Control.Applicative
+import Debug.Trace
 import Control.Monad.Writer
 import Control.Monad.Reader
 
