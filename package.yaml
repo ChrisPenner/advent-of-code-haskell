@@ -39,6 +39,8 @@ dependencies:
 - bytestring
 - linear
 - deepseq
+- these
+- these-lens
 
 library:
   source-dirs: src
