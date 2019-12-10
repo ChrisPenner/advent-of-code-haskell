@@ -17,6 +17,7 @@ import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Text.Lens
+import Data.Monoid
 
 groupUp :: Int -> [a] -> Maybe ([a], [a])
 groupUp _ [] = Nothing
@@ -65,3 +66,16 @@ part2 = do
       <&> T.chunksOf 25
       <&> T.unlines
       >>= T.putStrLn
+
+
+convolving :: forall f g t a b. (Alternative g, Functor t, Foldable t, Applicative f, Traversable f) => Traversal (t (f a)) (f b) (g a) b
+convolving f xs = do
+    let withList :: t (f [a]) = (fmap . fmap) pure xs
+    let next :: f (g a) = fmap asum . (fmap . fmap) pure . getAp $ foldMap Ap withList
+    traverse f next
+
+convolving' :: forall f g t a b. (Alternative g, Functor t, Foldable t, Applicative f, Traversable f) => Traversal (t (f a)) (f b) (g a) b
+convolving' f xs = do
+    let withList :: t (f [a]) = (fmap . fmap) pure xs
+    let next :: f (g a) = fmap asum . (fmap . fmap) pure . getAp $ foldMap Ap withList
+    traverse f next
