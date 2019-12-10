@@ -17,16 +17,6 @@ import Data.Foldable
 import qualified Data.Map as M
 import Data.List
 
-sortAngles :: (Int, Int) -> [(Int, Int)] -> (M.Map (Int, Int, Maybe Rational) [(Int, Int)])
-sortAngles (x, y) points = M.fromListWith (<>) $ do
-    (x', y') <- points
-    guard ((x', y') /= (x, y))
-    let diffX = x' - x
-    let diffY = y' - y
-    let m = if diffX == 0 then Nothing
-                          else Just (abs (fromIntegral diffY % fromIntegral diffX))
-    return ((signum diffX, signum diffY, m), [(x', y')])
-
 part1 :: IO ()
 part1 = do
     asteroidLocs <- readFile "./src/Y2019/day10.txt" <&> toListOf ((lined <.> traversed <. only '#') . asIndex . swapped)
@@ -72,6 +62,17 @@ toAngleish args = wrap . (subtract (pi + (pi / 2))) $ case args of
 
 manhattanDistance :: (Int, Int) -> (Int, Int) -> Int
 manhattanDistance (x, y) (x', y') = abs (x - x') + abs (y - y')
+
+sortAngles :: (Int, Int) -> [(Int, Int)] -> (M.Map (Int, Int, Maybe Rational) [(Int, Int)])
+sortAngles (x, y) points = M.fromListWith (<>) $ do
+    (x', y') <- points
+    guard ((x', y') /= (x, y))
+    let diffX = x' - x
+    let diffY = y' - y
+    let m = if diffX == 0 then Nothing
+                          else Just (abs (fromIntegral diffY % fromIntegral diffX))
+    return ((signum diffX, signum diffY, m), [(x', y')])
+
 
 part2 :: IO ()
 part2 = do
