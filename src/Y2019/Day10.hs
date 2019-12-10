@@ -80,22 +80,5 @@ part2 = do
     let ref = (30, 34)
     let angleMap = M.mapKeys toAngleish (sortAngles ref asteroidLocs)
     let sortedAngleMap = sortOn (manhattanDistance ref) <$> angleMap
-    let flattened = concat $ unfoldr go $ M.elems sortedAngleMap
-    -- print (flattened !! 0)
-    -- print (flattened !! 1)
-    -- print (flattened !! 2)
-    -- print (flattened !! 9)
-    -- print (flattened !! 19)
-    -- print (flattened !! 49)
-    -- print (flattened !! 99)
-    -- print (flattened !! 198)
+    let flattened = concat . Data.List.transpose $ M.elems sortedAngleMap
     print (flattened !! 199)
-    -- print (flattened !! 200)
-    -- print (flattened !! 298)
-
-
-go :: [[(Int, Int)]] -> Maybe ([(Int, Int)], [[(Int, Int)]])
-go xs =
-    case foldMapOf (traversed . _Cons) ((\(a, b) -> (pure a, pure b))) xs of
-        (x, rest) | (null x && null rest) -> Nothing
-        (x, rest) -> Just (x, rest)
