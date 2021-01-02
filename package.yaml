@@ -41,6 +41,9 @@ dependencies:
 - deepseq
 - these
 - these-lens
+- barbies
+- finite-typelits
+- vector-sized
 
 library:
   source-dirs: src
